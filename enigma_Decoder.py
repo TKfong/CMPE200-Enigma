@@ -1,8 +1,9 @@
 import sys
+from easygui import *
 
 class Enigma:
     # Constructor/Initialize Enigma machine
-    def __init__(self):
+    def __init__(self, KnownText):
         self.numcycles = 0
         self.rotors = []
 
@@ -19,7 +20,7 @@ class Enigma:
         self.list_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
                         'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
         self.list_known = []
-        self.knownText = []
+        self.knownText = KnownText
         self.dict_worng = {}
         self.dict_right = {}
         self.dict_index = {}
@@ -96,6 +97,7 @@ class Enigma:
 		# Print rotor sequence
 		for r in self.rotors:
 		    	print(r.setting, "\t", r.sequence)
+                
     # Initialize the available Map to default state 
     def initAvailableMap(self):
         for i in self.list_letters:
@@ -172,6 +174,7 @@ class Enigma:
 
     # Configures the plugboard settings
     def plugBoardSetting(self, list_process, list_known):
+        print("decrypting")
         while self.should_restart:
             self.should_restart = False
             self.reset()
@@ -213,9 +216,11 @@ class Enigma:
                         break
             if(not self.checkIfAllMapped(list_process)):
                 self.should_restart = True
-        for i in self.list_letters:
-            print(i , " : ", self.dict_available[i])
+        #for i in self.list_letters:
+        #    print(i , " : ", self.dict_available[i])
         print("plug Board Setting")
+        print()
+        print(self.dict_right)
 
     def deduce(self, deduce, known):
                 if (not (self.dict_right.has_key(known) or self.dict_right.has_key(deduce))):  # deduce is present in map
@@ -252,18 +257,23 @@ class Enigma:
                             self.should_restart = True
 
     def decrypt(self, message):
-        print("decrypting")
         # reset to the deduced setting
         self.reset()
         for i in range(0,self.count):
             self.rotateRotar()
-
+        print("Deduced Rotor settings : ")
+        print()
+        self.print_setup()
         # prints the decoded message
         for i in message:
             if(i != '\n'):
-                c = self.encrypt(i)
-                c = self.dict_right[c]
-                print c,
+                if(self.dict_right.has_key(i)):
+                    c = self.encrypt(i)
+                    c = self.dict_right[c]
+                    print c,
+                else:
+                    self.rotateRotar()
+                    continue
 
 
     def slider(self, myList):
@@ -287,7 +297,9 @@ class Enigma:
 
     def stringToList(self, myString, myList):
         for i, l in enumerate(myString):
-            myList.append(l)
+            if(l.isalpha()):
+                l = l.upper()
+                myList.append(l)
         print(" Converting String to List")
 
 
@@ -377,25 +389,50 @@ class Reflector:
         return self.sequence.index(self.base[index])
 
 def main():
-    # Initialize an Enigma machine
-    machine = Enigma()
-    # Output
-    ciphertext = ""
+    # Create GUI
+	msg = "Enter machine settings"
+	title = "Enigma Machine"
+	fieldNames = ["Input","KnownText"]
+	fieldValues = []  # we start with blanks for the values
+	fieldValues = multenterbox(msg,title, fieldNames)
 
-    #try:
-    f = open("input.txt", "r")  # opens the input file
-    message = f.read()
-    # print message
-    list_input = []  # List for input from text file
-    list_process = []  # List for processing on extracted message
-    # initial setting
-    machine.knownText = "AKMSDOWQROFLWPAWAWFIWGKOBDFFMVMXCNBFDIZPVXLBPRPEHLEPLPCVPP"            # Known text 
-    machine.initAvailableMap()
-    machine.stringToList(message, list_input)
-    list_process = machine.slider(list_input)
-    print(list_process, machine.s)
-    machine.plugBoardSetting(list_process, machine.list_known)
-    machine.decrypt(message)
+	# make sure that none of the fields was left blank
+	while 1:
+	    if fieldValues == None: break
+	    errmsg = ""
+	    for i in range(len(fieldNames)):
+	      if fieldValues[i].strip() == "":
+		errmsg = errmsg + ('"%d" is a required field.\n\n' % fieldNames[i])
+	    if errmsg == "": break # no problems found
+	    fieldValues = multenterbox(errmsg, title, fieldNames, fieldValues)
+
+	# Initialize an Enigma machine
+	# Read inputs from the gui - fieldValues[]
+	machine = Enigma((fieldValues[1]))
+	# Output
+	ciphertext = ""
+
+	try:
+            
+            #f = open("input.txt", "r")  # opens the input file
+            #message = f.read()
+            message = fieldValues[0]
+            list_input = []  # List for input from text file
+            list_process = []  # List for processing on extracted message
+            # initial setting
+            #machine.knownText = plaintext
+            machine.initAvailableMap()
+            print("The Initial rotor settings")
+            machine.print_setup()
+            machine.stringToList(message, list_input)
+            list_process = machine.slider(list_input)
+            print(list_process, machine.s)
+            machine.plugBoardSetting(list_process, machine.list_known)
+            machine.decrypt(message)
+	except IndexError:
+		for plaintext in sys.stdin:
+	    		for character in plaintext:
+				sys.stdout.write(machine.encrypt(character))
 
 if __name__ == '__main__':
     main()
