@@ -10,3 +10,5 @@ Move to directory containing the py files.
 Command Line input: "python enigma.py" or "python enigma_Decoder.py"
 
 Note: Limitations for each of the codes are listed in their respective docs.
+
+
